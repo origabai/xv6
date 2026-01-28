@@ -1,0 +1,6 @@
+1. usertrap()
+2. a7 = 7, equal to SYS_exec
+3. user mode - SPP is 0
+4. sepc=0x000000008000203c, lw	a3,0(zero). a3 is num
+5. 0 is not mapped, scause is load page fault.
+6. userinit, pid = 1
