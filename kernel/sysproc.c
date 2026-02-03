@@ -69,12 +69,31 @@ sys_sleep(void)
   return 0;
 }
 
-
+// #define LAB_PGTBL
 #ifdef LAB_PGTBL
+// returns -1 if requested number of pages is more than MAX_PGACCESS_PAGES
 int
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
+  uint64 addr, mask;
+  argaddr(0, &addr);
+  int num;
+  argint(1, &num);
+  argaddr(2, &mask);
+  if (num > MAX_PGACCESS_PAGES){
+    return -1;
+  }
+  uint64 localmask = 0;
+  pagetable_t pagetable = myproc()->pagetable;
+  for (int i=0;i<num;i++){
+    pte_t *pte = walk(pagetable, addr + PGSIZE*i, 0);
+    // printf("HI\n");
+    if ((*pte) & PTE_A){
+      localmask |= (1 << i);
+      (*pte) &= (~PTE_A);
+    }
+  }
+  copyout(pagetable, mask, (char*)&localmask,num/8);
   return 0;
 }
 #endif
