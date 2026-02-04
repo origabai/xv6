@@ -1,3 +1,7 @@
 1. uptime: the kernel will store the number of clock tick interrupts in the shared buffer,
 and update it every time it switches context
-2. 
+2. pages 0 and 2 are part of the text segment, which contains the code for init.c
+the pte for page 1 is 0x0000000021fd941f: the flag bits are all 1, so the process in user mode
+can write/read it.
+the third to last page contains the shared kernel-user buffer mapped to USYSCALL, which is excatly one page below
+the trapframe.
