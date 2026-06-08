@@ -77,8 +77,20 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2){
+    if (p->alarm_interval == 0){
+      // alarm is disabled for this process
+      yield();
+    }
+    p->alarm_ticks_elapsed++;
+    if (p->alarm_ticks_elapsed == p->alarm_interval){
+      // alarm_ticks_elapsed is only reset by sigrturn - this prevent handlers being called multiple times
+      memmove(&p->trapframe_copy, p->trapframe, sizeof(struct trapframe));
+      p->trapframe->epc = p->alarm_handler;
+      usertrapret();
+    }
     yield();
+  }
 
   usertrapret();
 }

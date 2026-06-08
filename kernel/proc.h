@@ -104,4 +104,10 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  // sigalaram fields
+  int alarm_interval; // the num. of ticks between every alarm
+  uint64 alarm_handler; // the handler that is called every alarm_interval ticks
+  int alarm_ticks_elapsed; // the number of ticks that that elapsed since the last alarm interrupt
+  struct trapframe trapframe_copy; // a copy of the trapframe, to allow sys_sigreturn to restore registers 
 };

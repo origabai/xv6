@@ -503,3 +503,21 @@ sys_pipe(void)
   }
   return 0;
 }
+
+extern uint64 sys_sigalarm(void){
+  struct proc *p = myproc();
+  uint64 n;
+  argaddr(0, &n);
+  p->alarm_interval = n;
+  argaddr(1, &p->alarm_handler);
+  p->alarm_ticks_elapsed = 0;
+  return 0;
+}
+
+extern uint64 sys_sigreturn(void){
+  struct proc *p = myproc();
+  p->alarm_ticks_elapsed = 0;
+  memmove(p->trapframe, &p->trapframe_copy, sizeof(struct trapframe));
+  // make the return value a0 to make sure it doesnt corrupt
+  return p->trapframe->a0;
+}
