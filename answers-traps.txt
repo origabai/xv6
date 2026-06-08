@@ -1,0 +1,6 @@
+1. a0, a1,a2 contain the arguments. a2 contains 13. 
+2. there is no call to f and g, the compiler inlines f(8)+1 completely as a2 <- 12
+3. printf is located in 0000000000000630
+4. after the jalr, ra = 0x38
+5. the output of the code is He110 World. if riscv5 was little-endian, i would do i = 0x726c6400. 57616 wouldnt need to change.
+6. y= whatever happens to be in the a2 register when the call to printf happens, this is because the third argument to printf is passed through a2
