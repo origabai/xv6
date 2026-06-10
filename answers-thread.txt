@@ -1,0 +1,5 @@
+let there be two threads thats are inserting two k,v pairs, with different keys
+and assume the keys are both not present in the list and are in the same bucket
+lets say the threads both reach the end of the linked list at the same time, and both call insert at about the same times
+now they both allocate a new linked list entry e, and there is a race for line 36: *p = e
+whatever thread does it first will get overriden by the other thread, so a key will be missing
