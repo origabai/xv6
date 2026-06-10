@@ -1,0 +1,25 @@
+pre lab:
+
+
+after lab:
+
+start test1
+test1 results:
+--- lock kmem/bcache stats
+lock: bcache: #test-and-set 0 #acquire() 6548
+--- top 5 contended locks:
+lock: proc: #test-and-set 340825 #acquire() 672590
+lock: proc: #test-and-set 235844 #acquire() 1074008
+lock: proc: #test-and-set 214372 #acquire() 1074015
+lock: proc: #test-and-set 139417 #acquire() 673913
+lock: proc: #test-and-set 132773 #acquire() 673914
+tot= 0
+test1 OK
+start test2
+total free number of pages: 32495 (out of 32768)
+.....
+test2 OK
+start test3
+child done 1
+child done 100000
+test3 OK
