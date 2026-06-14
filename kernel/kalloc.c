@@ -27,9 +27,7 @@ void
 kinit()
 {
   for (int i=0;i<NCPU;i++){
-    char lock_name[10] = {0};
-    snprintf(lock_name, 10, "kmem_%d", i);
-    initlock(&kmem[i].lock, lock_name);
+    initlock(&kmem[i].lock, "kmem");
   }
   freerange(end, (void*)PHYSTOP);
 }
@@ -61,7 +59,6 @@ kfree(void *pa)
   r = (struct run*)pa;
   push_off();
   int id = cpuid();
-  // printf("kfree %d\n", id);
   acquire(&kmem[id].lock);
   r->next = kmem[id].freelist;
   kmem[id].freelist = r;
@@ -79,13 +76,13 @@ kalloc(void)
 
   push_off();
   int id = cpuid();
-  // printf("kalloc %d\n", id);
   acquire(&kmem[id].lock);
   r = kmem[id].freelist;
   if (!r){
     // free list is empty, steal memory
     for (int i=0;i<NCPU;i++){
       if (i == id) continue;
+      if (kmem[i].lock.locked) continue;
       acquire(&kmem[i].lock);
       struct run *other_r = kmem[i].freelist;
       if (other_r){
