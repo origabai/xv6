@@ -65,9 +65,28 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if (r_scause() == 15) {
+    // store page fault
+    uint64 addr = r_stval();
+    if (addr >= MAXVA){
+      goto err;
+    }
+    pte_t *pte = walk(p->pagetable, addr, 0);
+    if (!(PTE_FLAGS(*pte) & PTE_C)){
+      // not a cow page, but the process tried to write to it anyway
+      goto err;
+    }
+    char* new_page = kalloc();
+    if (new_page == 0){
+      goto err;
+    }
+    ((uint64*)REFCNT)[(uint64)PTE2PA(*pte)/PGSIZE]--;
+    memmove(new_page, (char*)PTE2PA(*pte), PGSIZE);
+    *pte = PA2PTE(new_page) | ((PTE_FLAGS(*pte) & (~PTE_C))) | (PTE_W);
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
+    err:
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     setkilled(p);
