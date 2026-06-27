@@ -80,8 +80,9 @@ usertrap(void)
     if (new_page == 0){
       goto err;
     }
-    ((uint64*)REFCNT)[(uint64)PTE2PA(*pte)/PGSIZE]--;
+    
     memmove(new_page, (char*)PTE2PA(*pte), PGSIZE);
+    kfree((void*)PTE2PA(*pte));
     *pte = PA2PTE(new_page) | ((PTE_FLAGS(*pte) & (~PTE_C))) | (PTE_W);
   } else if((which_dev = devintr()) != 0){
     // ok

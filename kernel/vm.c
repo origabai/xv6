@@ -318,10 +318,12 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     flags = PTE_FLAGS(*pte);
     if (flags & PTE_W){
       flags |= PTE_C;
+      *pte |= PTE_C;
     }
     flags &= ~PTE_W;
-    ((uint64*)REFCNT)[(uint64)pa/PGSIZE]++;
-    if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
+    *pte &= ~PTE_W;
+    upd_refcount(pa, 1);
+    if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){ 
       goto err;
     }
   }
@@ -361,13 +363,12 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     pte_t *pte = walk(pagetable, va0, 0);
     if (PTE_FLAGS(*pte) & PTE_C){
       // COW page
-      printf("COW\n");
       char* new_page = kalloc();
       if (new_page == 0){
         return -1;
       }
-      ((uint64*)REFCNT)[(uint64)PTE2PA(*pte)/PGSIZE]--;
       memmove(new_page, (char*)PTE2PA(*pte), PGSIZE);
+      kfree((void*)PTE2PA(*pte));
       *pte = PA2PTE(new_page) | ((PTE_FLAGS(*pte) & (~PTE_C))) | (PTE_W);
       pa0 = (uint64)new_page;
     }
