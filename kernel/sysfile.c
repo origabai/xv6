@@ -503,3 +503,96 @@ sys_pipe(void)
   }
   return 0;
 }
+
+uint64 sys_mmap(void){
+  uint64 addr;
+  int length, prot, flags, offset;
+  struct file *f;
+  argaddr(0, &addr);
+  argint(1, &length);
+  argint(2, &prot);
+  argint(3, &flags);
+  if (argfd(4, 0, &f) < 0) return -1;
+  argint(5, &offset);
+
+  if (!(f->writable) && (prot & PROT_WRITE) && !(flags &= MAP_PRIVATE)){
+    return -1;
+  }
+
+  struct proc *p = myproc();
+  addr = p->sz;
+  mappages(p->pagetable, addr, length, 0, PTE_M);
+  p->sz += length;
+
+  int vma_idx = 0;
+  while (p->vma_arr[vma_idx].used) vma_idx++;
+  if (vma_idx == VMA_ARR_LEN) return -1; // no free vma
+  p->vma_arr[vma_idx].addr = addr;
+  p->vma_arr[vma_idx].len = length;
+  p->vma_arr[vma_idx].prot = prot;
+  p->vma_arr[vma_idx].flags = flags;
+  p->vma_arr[vma_idx].used = 1;
+  p->vma_arr[vma_idx].vfile = f;
+  filedup(f);
+  return addr;
+}
+
+uint64 sys_munmap(void){
+  uint64 addr;
+  int len;
+  argaddr(0, &addr);
+  argint(1, &len);
+  struct proc *p = myproc();
+  int vma_idx=-1;
+  for (int i=0;i<VMA_ARR_LEN;i++){
+    if (p->vma_arr[i].addr <= addr && addr < p->vma_arr[i].addr + p->vma_arr[i].len){
+      vma_idx = i;
+      break;
+    }
+  }
+  if (vma_idx == -1) return -1;
+
+  struct file *f = p->vma_arr[vma_idx].vfile;
+  if (p->vma_arr[vma_idx].flags & MAP_SHARED){
+    f->off += addr - p->vma_arr[vma_idx].addr;
+    filewrite(f, addr, len);
+    f->off = 0;
+  }
+
+  for(uint64 a = addr; a < addr + len; a += PGSIZE){
+    pte_t *pte;
+    if((pte = walk(p->pagetable, a, 0)) == 0)
+      panic("munmap: walk");
+    if((*pte & PTE_V) == 0){
+      printf("%p\n", *pte);
+      panic("munmap: not mapped");
+    }
+    if(PTE_FLAGS(*pte) == PTE_V)
+      panic("munmap: not a leaf");
+    if (!(PTE_FLAGS(*pte) & PTE_M)){
+      uint64 pa = PTE2PA(*pte);
+      kfree((void*)pa);
+    }
+    *pte &= ~PTE_W;
+    *pte &= ~PTE_R;
+    *pte &= ~PTE_N;
+    *pte |= PTE_M;
+  }
+  
+
+  if (addr == p->vma_arr[vma_idx].addr){
+    // remove prefix
+    p->vma_arr[vma_idx].len -= len;
+    p->vma_arr[vma_idx].addr += len;
+  } else {
+    // remove suffix
+    p->vma_arr[vma_idx].len -= len;
+  }
+
+  if (p->vma_arr[vma_idx].len == 0){
+    fileclose(p->vma_arr[vma_idx].vfile);
+    p->vma_arr[vma_idx].used = 0;
+  }
+
+  return 0;
+}

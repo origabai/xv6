@@ -185,7 +185,14 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       panic("uvmunmap: not a leaf");
     if(do_free){
       uint64 pa = PTE2PA(*pte);
-      kfree((void*)pa);
+      if ((PTE_FLAGS(*pte) & PTE_M)){
+        // if this is a mmap'ed page that was alloced
+        if ((PTE_FLAGS(*pte) & PTE_N)){
+          kfree((void*)pa);
+        }
+      } else {
+        kfree((void*)pa);
+      }
     }
     *pte = 0;
   }
@@ -319,7 +326,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
       goto err;
-    memmove(mem, (char*)pa, PGSIZE);
+    if (!(flags & PTE_M) || (flags & PTE_N)) memmove(mem, (char*)pa, PGSIZE);
     if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
       kfree(mem);
       goto err;

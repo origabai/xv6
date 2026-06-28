@@ -5,6 +5,10 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "fs.h"
+#include "sleeplock.h"
+#include "file.h"
+#include "fcntl.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -67,7 +71,35 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+  } else if (r_scause() == 0xd || r_scause() == 0xf) {
+    // page fault
+    uint64 addr = r_stval();
+    int vma_idx=-1;
+    for (int i=0;i<VMA_ARR_LEN;i++){
+      if (p->vma_arr[i].addr <= addr && addr < p->vma_arr[i].addr + p->vma_arr[i].len){
+        vma_idx = i;
+        break;
+      }
+    }
+    if (vma_idx == -1) goto err;
+    if (addr >= MAXVA) panic("invalid mmaped region");
+    uint64 pa = (uint64)kalloc();
+    memset((char*)pa,0,PGSIZE);
+    pte_t *pte = walk(p->pagetable, addr, 0);
+    *pte = PA2PTE(pa);
+    *pte |= PTE_V | PTE_U | PTE_N | PTE_M;
+    if (p->vma_arr[vma_idx].prot & PROT_READ){
+      *pte |= PTE_R;
+    }
+    if (p->vma_arr[vma_idx].prot & PROT_WRITE){
+      *pte |= PTE_W;
+    }
+    struct file *f = p->vma_arr[vma_idx].vfile;
+    ilock(f->ip);
+    readi(f->ip, 0, pa, PGROUNDDOWN(addr) - p->vma_arr[vma_idx].addr, PGSIZE);
+    iunlock(f->ip);
   } else {
+    err:
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     setkilled(p);

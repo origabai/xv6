@@ -140,6 +140,11 @@ found:
     return 0;
   }
 
+  // set up VMA
+  for (int i=0;i<VMA_ARR_LEN;i++){
+    p->vma_arr[i].used = 0;
+  }
+
   // Set up new context to start executing at forkret,
   // which returns to user space.
   memset(&p->context, 0, sizeof(p->context));
@@ -295,6 +300,10 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+
+  for (int i=0;i<VMA_ARR_LEN;i++){
+    np->vma_arr[i] = p->vma_arr[i];
+  }
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
